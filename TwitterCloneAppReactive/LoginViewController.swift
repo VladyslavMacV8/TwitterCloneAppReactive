@@ -11,15 +11,15 @@ import ReactiveCocoa
 import ReactiveSwift
 import SwiftSpinner
 
-class LoginViewController: UIViewController {
+public final class LoginViewController: UIViewController {
     
     @IBOutlet weak var loginButton: UIButton!
     
     fileprivate let twitterManager: TwitterProtocol = TwitterAPIManager()
 
-    override var preferredStatusBarStyle: UIStatusBarStyle { return .lightContent }
+    override public var preferredStatusBarStyle: UIStatusBarStyle { return .lightContent }
     
-    override func viewDidLoad() {
+    override public func viewDidLoad() {
         super.viewDidLoad()
         config()
     }
@@ -32,7 +32,7 @@ class LoginViewController: UIViewController {
             SwiftSpinner.hide()
             switch event {
             case .completed:
-                goToNextController("TabViewController")
+                self.performSegue(withIdentifier: "toHome", sender: self)
             case .failed(let error):
                 alertControllerWith(error.localizedDescription)
             case .interrupted:

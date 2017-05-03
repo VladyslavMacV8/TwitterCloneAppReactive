@@ -18,12 +18,6 @@ func alertControllerWith(_ message: String) {
     UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: nil)
 }
 
-func goToNextController(_ id: String) {
-    let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
-    let vc = mainStoryboard.instantiateViewController(withIdentifier: id)
-    UIApplication.shared.keyWindow?.rootViewController?.present(vc, animated: true, completion: nil)
-}
-
 func requestImage(_ url: String) -> SignalProducer<UIImage, NoError> {
     return SignalProducer { observer, disposable in
         Alamofire.request(url, method: .get).response(queue: DispatchQueue.main, responseSerializer: Alamofire.DataRequest.dataResponseSerializer()) { response in
