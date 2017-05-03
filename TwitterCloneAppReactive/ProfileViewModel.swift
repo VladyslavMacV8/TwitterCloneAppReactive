@@ -21,7 +21,7 @@ public protocol ProfileViewModeling {
     var followingCount: Property<String> { get }
     var isFollow: MutableProperty<Bool?> { get set }
     
-    var cellModels: MutableProperty<[TweetCellViewModeling]> { get set }
+    var cellModels: Property<[TweetCellViewModeling]> { get }
     
     func userTimeline(id: Int)
     func userByScreenName(screenName: String) -> ProfileViewModeling
@@ -39,7 +39,7 @@ public final class ProfileViewModel: ProfileViewModeling {
     fileprivate let _followingCount = MutableProperty<String>("")
     fileprivate var _isFollow = MutableProperty<Bool?>(nil)
     
-    fileprivate var _cellModels = MutableProperty<[TweetCellViewModeling]>([])
+    fileprivate let _cellModels = MutableProperty<[TweetCellViewModeling]>([])
     
     public var id: Property<Int> { return Property(_id) }
     public var name: Property<String> { return Property(_name) }
@@ -54,10 +54,7 @@ public final class ProfileViewModel: ProfileViewModeling {
         set { _isFollow = newValue }
     }
     
-    public var cellModels: MutableProperty<[TweetCellViewModeling]> {
-        get { return _cellModels }
-        set { _cellModels = newValue }
-    }
+    public var cellModels: Property<[TweetCellViewModeling]> { return Property(_cellModels) }
     
     fileprivate let twitter: TwitterProtocol = TwitterAPIManager()
     
@@ -76,11 +73,12 @@ public final class ProfileViewModel: ProfileViewModeling {
     public init() {}
     
     public func userTimeline(id: Int) {
-        twitter.userTimeline(id: id).observe(on: UIScheduler()).on { (tweetsModel) in
-            for tweet in tweetsModel {
-                let tweetModel = TweetCellViewModel(tweet: tweet)
-                self._cellModels.value.append(tweetModel)
+        twitter.userTimeline(id: id).observe(on: UIScheduler()).on { (tweets) in
+            var tweetsModel = [TweetCellViewModeling]([])
+            for tweet in tweets {
+                tweetsModel.append(TweetCellViewModel(tweet: tweet))
             }
+            self._cellModels.value = tweetsModel
         }.start()
     }
     

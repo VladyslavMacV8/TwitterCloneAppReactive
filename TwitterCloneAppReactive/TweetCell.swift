@@ -47,6 +47,7 @@ internal final class TweetCell: UITableViewCell {
     internal var viewModel: TweetCellViewModeling? {
         didSet {
             guard let viewModel = viewModel else { return }
+                        
             authorNameLabel.text = viewModel.authorName
             authorScreennameLabel.text = viewModel.authorScreenName
             tweetContentsLabel.text = viewModel.tweetContents
@@ -56,8 +57,11 @@ internal final class TweetCell: UITableViewCell {
             
             viewModel.getHyperlink(tweetContentsLabel)
             
-            profilePictureImageView.reactive.image <~ viewModel.getProfilePictureImageView().take(until: self.reactive.prepareForReuse)
-            mediaImageView.reactive.image <~ configMediaImage().take(until: self.reactive.prepareForReuse)
+            profilePictureImageView.reactive.image <~ viewModel.getProfilePictureImageView()
+            
+            configMediaImage().observe(on: UIScheduler()).startWithValues({ (image) in
+                self.mediaImageView.image = image
+            })
             
             retweetButton.isSelected = viewModel.retweeted
             favoriteButton.isSelected = viewModel.favorited
@@ -73,6 +77,7 @@ internal final class TweetCell: UITableViewCell {
                     guard let urltext = medium["url"] as? String else { return }
                     self.tweetContentsLabel.text = self.tweetContentsLabel.text?.replacingOccurrences(of: urltext, with: "")
                 }
+                
                 self.mediaImageView.isHidden = false
                 self.verticalSpacingMediaImage.constant = 8
                 if self.heightMediaImage != nil {
@@ -82,8 +87,8 @@ internal final class TweetCell: UITableViewCell {
                 viewModel.getMediaImageView().observe(on: UIScheduler()).startWithValues {
                     observer.send(value: $0)
                     observer.sendCompleted()
+                    self.delegate?.reloadTableCellAtIndex(cell: self, indexPath: self.indexPath)
                 }
-                self.delegate?.reloadTableCellAtIndex(cell: self, indexPath: self.indexPath)
             }
         }
     }

@@ -10,6 +10,7 @@ import UIKit
 import RealmSwift
 import ReactiveCocoa
 import ReactiveSwift
+import SwiftSpinner
 
 public final class ProfileViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, TwitterTableViewDelegate {
 
@@ -49,13 +50,14 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
             userModeling = ProfileViewModel(user: realmManager.getCurrentUser())
             setupViewController()
         } else {
-            twitterManager.userByScreenName(screenName: userScreenName)
-                .observe(on: UIScheduler())
-                .on(value: { (user) in
+            SwiftSpinner.show("Initialization...")
+            twitterManager.userByScreenName(screenName: userScreenName).observe(on: UIScheduler()).on(value: { (user) in
                 self.userModeling = ProfileViewModel(user: user)
-            }).on(completed: {
-                self.setupViewController()
-            }).start()
+            }).startWithCompleted {
+                SwiftSpinner.hide({ 
+                    self.setupViewController()
+                })
+            }
         }
     }
     
@@ -107,7 +109,6 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     
     @objc fileprivate func reloadData() {
         guard let user = userModeling else { return }
-        userViewModel.cellModels.value.removeAll()
         userViewModel.userTimeline(id: user.id.value)
         userViewModel.cellModels.producer.on { _ in self.userTableView.reloadData() }.start()
         refreshControl.endRefreshing()

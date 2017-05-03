@@ -43,7 +43,6 @@ public final class HomeTableViewController: UITableViewController, TwitterTableV
     }
     
     @objc fileprivate func reloadData() {
-        homeViewModel.cellModels.value.removeAll()
         homeViewModel.startUpdate()
         homeViewModel.cellModels.producer.on { _ in self.tableView.reloadData() }.start()
         refreshControl?.endRefreshing()

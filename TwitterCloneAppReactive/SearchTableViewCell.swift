@@ -28,7 +28,6 @@ internal class SearchTableViewCell: UITableViewCell {
             nameLabel.reactive.text <~ viewModel.name
             screenNameLabel.reactive.text <~ viewModel.screenName
             
-            
             if let follow = viewModel.isFollow.value, !follow {
                 followButton.isHidden = false
             } else {

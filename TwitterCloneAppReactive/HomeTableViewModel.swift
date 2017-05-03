@@ -11,28 +11,26 @@ import ReactiveSwift
 import Result
 
 public protocol HomeTableViewModeling {
-    var cellModels: MutableProperty<[TweetCellViewModeling]> { get set }
+    var cellModels: Property<[TweetCellViewModeling]> { get }
     
     func startUpdate()
 }
 
 public final class HomeTableViewModel: HomeTableViewModeling {
-    fileprivate var _cellModels = MutableProperty<[TweetCellViewModeling]>([])
+    fileprivate let _cellModels = MutableProperty<[TweetCellViewModeling]>([])
     fileprivate let twitter: TwitterProtocol = TwitterAPIManager()
     
-    public var cellModels: MutableProperty<[TweetCellViewModeling]> {
-        get { return _cellModels }
-        set { _cellModels = newValue }
-    }
+    public var cellModels: Property<[TweetCellViewModeling]> { return Property(_cellModels) }
     
     public init() {}
     
     public func startUpdate() {
-        twitter.homeTimeline().observe(on: UIScheduler()).on { (tweetsModel) in
-            for tweet in tweetsModel {
-                let modeling = TweetCellViewModel(tweet: tweet)
-                self._cellModels.value.append(modeling)
+        twitter.homeTimeline().observe(on: UIScheduler()).on { (tweets) in
+            var tweetsModel = [TweetCellViewModeling]([])
+            for tweet in tweets {
+                tweetsModel.append(TweetCellViewModel(tweet: tweet))
             }
+            self._cellModels.value = tweetsModel
         }.start()
     }
 }
