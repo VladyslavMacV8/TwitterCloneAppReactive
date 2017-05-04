@@ -7,10 +7,9 @@
 //
 
 import UIKit
-import RealmSwift
-import ReactiveCocoa
 import ReactiveSwift
 import SwiftSpinner
+import Kingfisher
 
 public final class ProfileViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, TwitterTableViewDelegate {
 
@@ -64,11 +63,13 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     fileprivate func setupViewController() {
         guard let user = userModeling else { return }
         
-        if let backgorundImageUrl = user.backgroundImageURL.value {
-            backgroundImageView.reactive.image <~ requestImage(backgorundImageUrl)
+        if let backgorundImageUrl = URL(string: user.backgroundImageURL.value) {
+            backgroundImageView.kf.setImage(with: backgorundImageUrl, placeholder: UIImage(named: "bg"), options: [.backgroundDecode])
         }
         
-        profileImageView.reactive.image <~ requestImage(user.profileUrl.value)
+        if let profileUrl = URL(string: user.profileUrl.value) {
+            profileImageView.kf.setImage(with: profileUrl, options: [.backgroundDecode])
+        }
         
         nameLabel.reactive.text <~ user.name
         screenNameLabel.reactive.text <~ user.screenName
@@ -121,7 +122,7 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "HomeCell", for: indexPath) as! TweetCell
         cell.delegate = self
-        cell.indexPath = indexPath
+//        cell.indexPath = indexPath
         
         cell.viewModel = userViewModel.cellModels.value[indexPath.row]
         
@@ -144,11 +145,9 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
         }
     }
     
-    func reloadTableCellAtIndex(cell: UITableViewCell, indexPath: IndexPath) {
-        if reloadedIndexPaths.index(of: indexPath.row) == nil {
-            reloadedIndexPaths.append(indexPath.row)
-            DispatchQueue.main.async { self.userTableView.reloadRows(at: [indexPath], with: .none) }
-        }
+    func reloadTableCellAtIndex(cell: UITableViewCell) {
+        guard let newIndex = userTableView.indexPath(for: cell) else { return }
+        DispatchQueue.main.async { self.userTableView.reloadRows(at: [newIndex], with: .none) }
     }
     
     func openCompose(_ viewController: UIViewController) {

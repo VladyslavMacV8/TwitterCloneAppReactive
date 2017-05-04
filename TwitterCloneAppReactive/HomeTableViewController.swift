@@ -55,7 +55,6 @@ public final class HomeTableViewController: UITableViewController, TwitterTableV
     override public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "HomeCell", for: indexPath) as! TweetCell
         cell.delegate = self
-        cell.indexPath = indexPath
         
         cell.viewModel = homeViewModel.cellModels.value[indexPath.row]
         
@@ -69,11 +68,9 @@ public final class HomeTableViewController: UITableViewController, TwitterTableV
         }
     }
     
-    func reloadTableCellAtIndex(cell: UITableViewCell, indexPath: IndexPath) {
-        if reloadedIndexPaths.index(of: indexPath.row) == nil {
-            reloadedIndexPaths.append(indexPath.row)
-            DispatchQueue.main.async { self.tableView.reloadRows(at: [indexPath], with: .none) }
-        }
+    func reloadTableCellAtIndex(cell: UITableViewCell) {
+        guard let newIndex = tableView.indexPath(for: cell) else { return }
+        DispatchQueue.main.async { self.tableView.reloadRows(at: [newIndex], with: .none) }
     }
     
     func openProfile(_ userScreenName: String) {

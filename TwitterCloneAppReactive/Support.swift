@@ -7,32 +7,13 @@
 //
 
 import UIKit
-import ReactiveSwift
-import Result
-import Alamofire
 
-func alertControllerWith(_ message: String) {
-    let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-    let alertAction = UIAlertAction(title: "Ok", style: .default, handler: nil)
-    alert.addAction(alertAction)
-    UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: nil)
-}
-
-func requestImage(_ url: String) -> SignalProducer<UIImage, NoError> {
-    return SignalProducer { observer, disposable in
-        Alamofire.request(url, method: .get).response(queue: DispatchQueue.main, responseSerializer: Alamofire.DataRequest.dataResponseSerializer()) { response in
-            switch response.result {
-            case .success(let data):
-                guard let image = UIImage(data: data) else {
-                    observer.sendInterrupted()
-                    return
-                }
-                observer.send(value: image)
-                observer.sendCompleted()
-            case .failure:
-                observer.sendInterrupted()
-            }
-        }
+extension UIViewController {
+    func alertControllerWith(_ message: String) {
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        let alertAction = UIAlertAction(title: "Ok", style: .default, handler: nil)
+        alert.addAction(alertAction)
+        self.present(alert, animated: true, completion: nil)
     }
 }
 

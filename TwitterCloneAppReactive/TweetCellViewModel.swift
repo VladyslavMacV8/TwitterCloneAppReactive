@@ -22,15 +22,13 @@ public protocol TweetCellViewModeling {
     var media: [[String: AnyObject]] { get }
     var favorited: Bool { get }
     var retweeted: Bool { get }
-    var mediaProfilePic: String? { get }
     
-    func getProfilePictureImageView() -> SignalProducer<UIImage?, NoError>
-    func getMediaImageView() -> SignalProducer<UIImage?, NoError>
+    func getProfilePictureImageView() -> SignalProducer<URL, NoError>
     func getHyperlink(_ label: UILabel)
-    func getDate() -> String
+    func getDate(_ label: UILabel)
 }
 
-public final class TweetCellViewModel: NSObject, TweetCellViewModeling {
+public final class TweetCellViewModel: TweetCellViewModeling {
     
     fileprivate var authorImage: UIImage?
     fileprivate var mediaImage: UIImage?
@@ -43,45 +41,46 @@ public final class TweetCellViewModel: NSObject, TweetCellViewModeling {
     public let authorScreenName: String
     public let tweetContents: String
     public let tweetAge: String
+    
     public var retweetCount: Int {
         get { return rCount }
         set { rCount = newValue } }
+    
     public var favoriteCount: Int {
         get { return fCount }
         set { fCount = newValue } }
+    
     public let urls: [[String: AnyObject]]
     public let media: [[String: AnyObject]]
     public let favorited: Bool
     public let retweeted: Bool
-    public var mediaProfilePic: String?
     
     internal init(tweet: TweetModel) {
-        
         tweetID = tweet.tweetID
-        authorName = tweet.authorName
-        authorScreenName = "@" + tweet.authorScreenName
+        authorName = tweet.userTweet.authorName
+        authorScreenName = "@" + tweet.userTweet.authorScreenName
         tweetContents = tweet.tweetContents
         tweetAge = tweet.tweetAge
         rCount = tweet.retweetCount
         fCount = tweet.favoriteCount
-        urls = tweet.urls
-        media = tweet.media
+        urls = tweet.entityTweet.urls
+        media = tweet.entityTweet.media
         favorited = tweet.favorited
         retweeted = tweet.retweeted
-        
-        authorProfilePic = tweet.authorProfilePic
-        mediaProfilePic = tweet.mediaProfilePic
-        
-        super.init()
+        authorProfilePic = tweet.userTweet.authorProfilePic
     }
     
-    public func getDate() -> String {
-        var date = tweetAge
-        let firstBound = date.index(date.startIndex, offsetBy: 4)
-        let endBound = date.index(date.endIndex, offsetBy: -18)
-        date = date.substring(from: firstBound)
-        date = date.substring(to: endBound)
-        return date
+    public func getDate(_ label: UILabel) {
+        DispatchQueue.global(qos: .background).async {
+            var date = self.tweetAge
+            let firstBound = date.index(date.startIndex, offsetBy: 4)
+            let endBound = date.index(date.endIndex, offsetBy: -18)
+            date = date.substring(from: firstBound)
+            date = date.substring(to: endBound)
+            DispatchQueue.main.async {
+                label.text = date
+            }
+        }
     }
     
     public func getHyperlink(_ label: UILabel) {
@@ -103,17 +102,16 @@ public final class TweetCellViewModel: NSObject, TweetCellViewModeling {
             
             let urlText = " " + displayUrls.joined(separator: " ")
             
+            guard let font = UIFont(name: "AppleSDGothicNeo-Light", size: 17) else { return }
+            
             let text = NSMutableAttributedString(string: content)
-            text.addAttribute(NSFontAttributeName,
-                              value: UIFont(name: "AppleSDGothicNeo-Thin", size: 17)!,
+            text.addAttribute(NSFontAttributeName, value: font,
                               range: NSRange(location: 0, length: content.characters.count))
             
             let links = NSMutableAttributedString(string: urlText)
-            links.addAttribute(NSFontAttributeName,
-                               value: UIFont(name: "AppleSDGothicNeo-Light", size: 17)!,
+            links.addAttribute(NSFontAttributeName, value: font,
                                range: NSRange(location: 0, length: urlText.characters.count))
-            links.addAttribute(NSForegroundColorAttributeName,
-                               value: #colorLiteral(red: 0.231372549, green: 0.6, blue: 0.9882352941, alpha: 1),
+            links.addAttribute(NSForegroundColorAttributeName, value: #colorLiteral(red: 0.231372549, green: 0.6, blue: 0.9882352941, alpha: 1),
                                range: NSRange(location: 0, length: urlText.characters.count))
             
             text.append(links)
@@ -121,38 +119,14 @@ public final class TweetCellViewModel: NSObject, TweetCellViewModeling {
         }
     }
     
-    public func getProfilePictureImageView() -> SignalProducer<UIImage?, NoError> {
+    public func getProfilePictureImageView() -> SignalProducer<URL, NoError> {
         return SignalProducer { (observer, disposable) in
-            if let image = self.authorImage {
-                observer.send(value: image)
-                observer.sendCompleted()
-            } else {
-                requestImage(self.authorProfilePic).observe(on: UIScheduler())
-                    .take(until: self.reactive.lifetime.ended)
-                    .map { $0 as UIImage? }.startWithValues {
-                        self.authorImage = $0
-                        observer.send(value: $0)
-                        observer.sendCompleted()
-                }
+            guard let pictureURL = URL(string: self.authorProfilePic) else {
+                observer.sendInterrupted()
+                return
             }
-        }
-    }
-    
-    public func getMediaImageView() -> SignalProducer<UIImage?, NoError> {
-        return SignalProducer { (observer, disposable) in
-            if let image = self.mediaImage {
-                observer.send(value: image)
-                observer.sendCompleted()
-            } else {
-                guard let image = self.mediaProfilePic else { return }
-                requestImage(image)
-                    .take(until: self.reactive.lifetime.ended)
-                    .startWithValues {
-                        self.mediaImage = $0
-                        observer.send(value: $0)
-                        observer.sendCompleted()
-                }
-            }
+            observer.send(value: pictureURL)
+            observer.sendCompleted()
         }
     }
 }

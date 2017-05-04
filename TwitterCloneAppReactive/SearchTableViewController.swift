@@ -7,15 +7,12 @@
 //
 
 import UIKit
-import RealmSwift
 
 public final class SearchTableViewController: UITableViewController, UITextFieldDelegate {
     
     @IBOutlet weak var searchTextField: UITextField!
 
-    fileprivate var newUsers: [ProfileViewModeling]?
-    fileprivate let realmManager: RealmProtocol = RealmManager()
-    fileprivate let twitterManager: TwitterProtocol = TwitterAPIManager()
+    fileprivate let searchViewModel: SearchViewModeling = SearchViewModel()
     
     override public func viewDidLoad() {
         super.viewDidLoad()
@@ -26,43 +23,36 @@ public final class SearchTableViewController: UITableViewController, UITextField
     
     override public func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        twitterManager.currentAccount().startWithValues { (user) in
-            self.realmManager.setCurrentUser(user)
-        }
+        searchViewModel.startUpdateCurrentUser()
     }
 
     override public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return newUsers == nil ? 0 : newUsers!.count
+        return searchViewModel.cellModels.value.count
     }
 
     override public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! SearchTableViewCell
-        cell.buttonTap = { self.reloadData() }
-        cell.viewModel = newUsers?[indexPath.row]
+        cell.buttonTap = {
+            self.searchViewModel.updateUsersList(label: self.searchTextField).startWithCompleted {
+                self.tableView.reloadData()
+            }
+        }
+        cell.viewModel = searchViewModel.cellModels.value[indexPath.row]
         
         return cell
     }
     
-    fileprivate func reloadData() {
-        twitterManager.searchNewUser(query: searchTextField.text!).startWithValues { (newUsers) in
-            var users = [ProfileViewModeling]([])
-            for user in newUsers {
-                users.append(ProfileViewModel(user: user))
-            }
-            self.newUsers = users
-            self.tableView.reloadData()
-        }
-    }
-    
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        textField.resignFirstResponder()
+        self.view.endEditing(true)
         return false
     }
     
     @IBAction func searchBarButtonAction(_ sender: UIBarButtonItem) {
         guard let count = searchTextField.text?.characters.count else { return }
         if count > 2 && count < 15 {
-            reloadData()
+            self.searchViewModel.updateUsersList(label: searchTextField).startWithCompleted {
+                self.tableView.reloadData()
+            }
         }
     }
 }

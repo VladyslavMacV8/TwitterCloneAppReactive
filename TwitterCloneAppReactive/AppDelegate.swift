@@ -16,10 +16,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
-        
-        var config = Realm.Configuration()
-        config.deleteRealmIfMigrationNeeded = true
-        Realm.Configuration.defaultConfiguration = config
+
+        Realm.Configuration.defaultConfiguration.deleteRealmIfMigrationNeeded = true
         
         return true
     }
@@ -50,16 +48,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 extension AppDelegate {
     
     func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -> Bool {
-        appHandle(url)
+        OAuthSwift.handle(url: url)
         return true
-    }
-    
-    func appHandle(_ url: URL) {
-        if url.host == "oauth-callback" {
-            OAuthSwift.handle(url: url)
-        } else {
-            OAuthSwift.handle(url: url)
-        }
     }
 }
 

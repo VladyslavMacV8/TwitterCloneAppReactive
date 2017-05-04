@@ -11,6 +11,7 @@ import RealmSwift
 import ReactiveCocoa
 import ReactiveSwift
 import Result
+import ObjectMapper
 
 public protocol TwitterProtocol {
     var authenticateCocoaAction: CocoaAction<UIButton>! { get }
@@ -32,18 +33,13 @@ public protocol TwitterProtocol {
 
 public class TwitterAPIManager: TwitterProtocol {
     
-    static let key = "cNaxiVQIlmj6Fheu3PQu8j7n2"
-    static let secret = "QlJ0kaeCYDzy2HQRRbI2FqAbqTwUMCXIKozWfFA8MGW0UYJ32B"
+    fileprivate static var tokens: (String, String)!
     
-    static let consumerData: [String: String] = ["consumerKey": TwitterAPIManager.key, "consumerSecret": TwitterAPIManager.secret]
-    static var tokens: (String, String)!
-    
-    
-    let oauth1swift = OAuth1Swift(consumerKey:     key,
-                                  consumerSecret:  secret,
-                                  requestTokenUrl: "https://api.twitter.com/oauth/request_token",
-                                  authorizeUrl:    "https://api.twitter.com/oauth/authorize",
-                                  accessTokenUrl:  "https://api.twitter.com/oauth/access_token")
+    fileprivate let oauth1swift = OAuth1Swift(consumerKey:     ConstantString.key,
+                                  consumerSecret:  ConstantString.secret,
+                                  requestTokenUrl: ConstantString.requestTokenUrl,
+                                  authorizeUrl:    ConstantString.authorizeUrl,
+                                  accessTokenUrl:  ConstantString.accessTokenUrl)
     
     fileprivate let realmManager: RealmProtocol = RealmManager()
     fileprivate let defaults = UserDefaults.standard
@@ -52,9 +48,7 @@ public class TwitterAPIManager: TwitterProtocol {
     public var authenticateAction: Action<(), (), NoError>!
     
     init() {
-        authenticateAction = Action<(), (), NoError> { (_) -> SignalProducer<(), NoError> in
-            return self.doOAuthTwitter()
-        }
+        authenticateAction = Action<(), (), NoError> { (_) -> SignalProducer<(), NoError> in return self.doOAuthTwitter() }
         authenticateCocoaAction = CocoaAction(authenticateAction)
     }
     
@@ -89,10 +83,10 @@ public class TwitterAPIManager: TwitterProtocol {
     public func currentAccount() -> SignalProducer<UserModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get("https://api.twitter.com/1.1/account/verify_credentials.json", parameters: [:], success: { response in
+            let _ = self.oauth1swift.client.get(ConstantString.currentAccount, parameters: [:], success: { response in
                 do {
-                    guard let jsonDictinary = try response.jsonObject() as? [String: AnyObject] else { return }
-                    let user = UserModel(jsonDictinary)
+                    let jsonDictinary = try response.jsonObject() as Any?
+                    guard let user = Mapper<UserModel>().map(JSONObject: jsonDictinary) else { return }
                     observer.send(value: user)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -106,11 +100,11 @@ public class TwitterAPIManager: TwitterProtocol {
     public func homeTimeline() -> SignalProducer<[TweetModel], NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get("https://api.twitter.com/1.1/statuses/home_timeline.json",
+            let _ = self.oauth1swift.client.get(ConstantString.homeTimeline,
                                                 parameters: ["count": 30], success: { response in
                 do {
-                    guard let dictionaries = try response.jsonObject() as? [[String: AnyObject]] else { return }
-                    let tweets = TweetModel.tweetsWithArray(dictionaries)
+                    guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
+                    guard let tweets = Mapper<TweetModel>().mapArray(JSONArray: jsonDictinary) else { return }
                     observer.send(value: tweets)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -124,11 +118,11 @@ public class TwitterAPIManager: TwitterProtocol {
     public func userTimeline(id: Int) -> SignalProducer<[TweetModel], NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get("https://api.twitter.com/1.1/statuses/user_timeline.json",
+            let _ = self.oauth1swift.client.get(ConstantString.userTimeline,
                                                 parameters: ["count": 30, "user_id": id], success: { response in
                 do {
-                    guard let dictionaries = try response.jsonObject() as? [[String: AnyObject]] else { return }
-                    let tweets = TweetModel.tweetsWithArray(dictionaries)
+                    guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
+                    guard let tweets = Mapper<TweetModel>().mapArray(JSONArray: jsonDictinary) else { return }
                     observer.send(value: tweets)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -142,12 +136,12 @@ public class TwitterAPIManager: TwitterProtocol {
     public func userByScreenName(screenName: String) -> SignalProducer<UserModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get("https://api.twitter.com/1.1/users/lookup.json",
+            let _ = self.oauth1swift.client.get(ConstantString.userByScreenName,
                                                 parameters: ["screen_name": screenName], success: { response in
                 do {
-                    guard let dictionaries = try response.jsonObject() as? [[String: AnyObject]] else { return }
-                    let user = UserModel(dictionaries[0])
-                    observer.send(value: user)
+                    guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
+                    guard let user = Mapper<UserModel>().mapArray(JSONArray: jsonDictinary) else { return }
+                    observer.send(value: user[0])
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
             }, failure: { error in
@@ -162,11 +156,11 @@ public class TwitterAPIManager: TwitterProtocol {
         return SignalProducer { (observer, disposable) in
             let tweetID = params!["id"] as! String
             let endpoint = retweet ? "retweet" : "unretweet"
-            let _ = self.oauth1swift.client.post("https://api.twitter.com/1.1/statuses/\(endpoint)/\(tweetID).json",
-                                                 parameters: ["id": tweetID], headers: nil, body: nil, success: { (response) in
+            let _ = self.oauth1swift.client.post(ConstantString.retweet + endpoint + "/" + tweetID + ".json",
+                                                 parameters: ["id": tweetID], success: { (response) in
                 do {
-                    guard let dictionary = try response.jsonObject() as? [String: AnyObject] else { return }
-                    let tweet = TweetModel(dictionary)
+                    guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
+                    guard let tweet = Mapper<TweetModel>().map(JSON: jsonDictinary) else { return }
                     observer.send(value: tweet)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -181,11 +175,11 @@ public class TwitterAPIManager: TwitterProtocol {
         getTokens()
         return SignalProducer { (observer, disposable) in
             let endpoint = favorite ? "create" : "destroy"
-            let _ = self.oauth1swift.client.post("https://api.twitter.com/1.1/favorites/\(endpoint).json",
-                                                 parameters: params, headers: nil, body: nil, success: { (response) in
+            let _ = self.oauth1swift.client.post(ConstantString.favorite + endpoint + ".json",
+                                                 parameters: params, success: { (response) in
                 do {
-                    guard let dictionary = try response.jsonObject() as? [String: AnyObject] else { return }
-                    let tweet = TweetModel(dictionary)
+                    guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
+                    guard let tweet = Mapper<TweetModel>().map(JSON: jsonDictinary) else { return }
                     observer.send(value: tweet)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -199,11 +193,11 @@ public class TwitterAPIManager: TwitterProtocol {
     public func publishTweet(params: [String : AnyObject]) -> SignalProducer<TweetModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.post("https://api.twitter.com/1.1/statuses/update.json",
-                                                 parameters: params, headers: nil, body: nil, success: { (response) in
+            let _ = self.oauth1swift.client.post(ConstantString.publishTweet,
+                                                 parameters: params, success: { (response) in
                 do {
-                    guard let dictionary = try response.jsonObject() as? [String: AnyObject] else { return }
-                    let tweet = TweetModel(dictionary)
+                    guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
+                    guard let tweet = Mapper<TweetModel>().map(JSON: jsonDictinary) else { return }
                     observer.send(value: tweet)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -221,12 +215,12 @@ public class TwitterAPIManager: TwitterProtocol {
                 observer.sendInterrupted()
                 return
             }
-            let _ = self.oauth1swift.client.post("https://api.twitter.com/1.1/statuses/update.json",
+            let _ = self.oauth1swift.client.post(ConstantString.publishTweet,
                                                  parameters: ["status": text, "in_reply_to_status_id":
-                                                    replyToTweetID!], headers: nil, body: nil, success: { (response) in
+                                                    replyToTweetID!], success: { (response) in
                 do {
-                    guard let dictionary = try response.jsonObject() as? [String: AnyObject] else { return }
-                    let tweet = TweetModel(dictionary)
+                    guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
+                    guard let tweet = Mapper<TweetModel>().map(JSON: jsonDictinary) else { return }
                     observer.send(value: tweet)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -240,11 +234,11 @@ public class TwitterAPIManager: TwitterProtocol {
     public func deleteTweet(tweetId: String) -> SignalProducer<TweetModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.post("https://api.twitter.com/1.1/statuses/destroy/\(tweetId).json",
-                                                 parameters: [:], headers: nil, body: nil, success: { (response) in
+            let _ = self.oauth1swift.client.post(ConstantString.deleteTweet + tweetId + ".json",
+                                                 parameters: [:], success: { (response) in
                 do {
-                    guard let dictionary = try response.jsonObject() as? [String: AnyObject] else { return }
-                    let tweet = TweetModel(dictionary)
+                    guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
+                    guard let tweet = Mapper<TweetModel>().map(JSON: jsonDictinary) else { return }
                     observer.send(value: tweet)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
@@ -258,12 +252,12 @@ public class TwitterAPIManager: TwitterProtocol {
     public func searchNewUser(query: String) -> SignalProducer<[UserModel], NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get("https://api.twitter.com/1.1/users/search.json",
+            let _ = self.oauth1swift.client.get(ConstantString.searchNewUser,
                                                 parameters: ["q": query], success: { response in
                 do {
-                    guard let dictionaries = try response.jsonObject() as? [[String: AnyObject]] else { return }
-                    let user = UserModel.usersWithArray(dictionaries)
-                    observer.send(value: user)
+                    guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
+                    guard let users = Mapper<UserModel>().mapArray(JSONArray: jsonDictinary) else { return }
+                    observer.send(value: users)
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
             }, failure: { error in
@@ -276,12 +270,12 @@ public class TwitterAPIManager: TwitterProtocol {
     public func followNewUser(screenName: String) -> SignalProducer<UserModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.post("https://api.twitter.com/1.1/friendships/create.json",
-                parameters: ["screen_name": screenName, "follow": true], headers: nil, body: nil, success: { (response) in
+            let _ = self.oauth1swift.client.post(ConstantString.followNewUser,
+                                                 parameters: ["screen_name": screenName, "follow": true], success: { (response) in
                     do {
-                        guard let dictionary = try response.jsonObject() as? [String: AnyObject] else { return }
-                        let tweet = UserModel(dictionary)
-                        observer.send(value: tweet)
+                        let jsonDictinary = try response.jsonObject() as Any?
+                        guard let user = Mapper<UserModel>().map(JSONObject: jsonDictinary) else { return }
+                        observer.send(value: user)
                         observer.sendCompleted()
                     } catch { observer.sendInterrupted() }
             }, failure: { (error) in

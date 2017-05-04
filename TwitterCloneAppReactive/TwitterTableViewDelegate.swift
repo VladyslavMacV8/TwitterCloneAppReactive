@@ -9,7 +9,8 @@
 import UIKit
 
 @objc protocol TwitterTableViewDelegate: class,  UITableViewDelegate {
-    func reloadTableCellAtIndex(cell: UITableViewCell, indexPath: IndexPath)
-    @objc optional func openProfile(_ userScreenName: String)
+    func reloadTableCellAtIndex(cell: UITableViewCell)
     func openCompose(_ viewController: UIViewController)
+    
+    @objc optional func openProfile(_ userScreenName: String)
 }
