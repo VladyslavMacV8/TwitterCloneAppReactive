@@ -7,8 +7,8 @@
 //
 
 import UIKit
-import ReactiveCocoa
 import ReactiveSwift
+import Kingfisher
 
 internal class SearchTableViewCell: UITableViewCell {
 
@@ -24,7 +24,11 @@ internal class SearchTableViewCell: UITableViewCell {
     internal var viewModel: ProfileViewModeling? {
         didSet {
             guard let viewModel = viewModel else { return }
-            photoImageView.reactive.image <~ requestImage(viewModel.profileUrl.value).take(until: self.reactive.prepareForReuse)
+            
+            if let url = URL(string: viewModel.backgroundImageURL.value) {
+                photoImageView.kf.setImage(with: url, options: [.backgroundDecode])
+            }
+            
             nameLabel.reactive.text <~ viewModel.name
             screenNameLabel.reactive.text <~ viewModel.screenName
             

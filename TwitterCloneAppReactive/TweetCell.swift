@@ -10,6 +10,7 @@ import UIKit
 import ReactiveCocoa
 import ReactiveSwift
 import Result
+import Kingfisher
 
 internal final class TweetCell: UITableViewCell {
     
@@ -30,8 +31,6 @@ internal final class TweetCell: UITableViewCell {
     
     weak var delegate: TwitterTableViewDelegate?
     
-    public var indexPath: IndexPath!
-    
     fileprivate let twitterManager: TwitterProtocol = TwitterAPIManager()
     fileprivate var retweet = false
     fileprivate var favorite = false
@@ -51,43 +50,44 @@ internal final class TweetCell: UITableViewCell {
             authorNameLabel.text = viewModel.authorName
             authorScreennameLabel.text = viewModel.authorScreenName
             tweetContentsLabel.text = viewModel.tweetContents
-            tweetAgeLabel.text = viewModel.getDate()
             retweetCountLabel.text = viewModel.retweetCount.description
             favoriteCountLabel.text = viewModel.favoriteCount.description
             
+            viewModel.getDate(tweetAgeLabel)
             viewModel.getHyperlink(tweetContentsLabel)
             
-            profilePictureImageView.reactive.image <~ viewModel.getProfilePictureImageView()
+            viewModel.getProfilePictureImageView().observe(on: UIScheduler()).startWithValues { (url) in
+                self.profilePictureImageView.kf.setImage(with: url, options: [.backgroundDecode])
+            }
             
-            configMediaImage().observe(on: UIScheduler()).startWithValues({ (image) in
-                self.mediaImageView.image = image
-            })
+            mediaImageView.image = nil
+            getMediaImage()
             
             retweetButton.isSelected = viewModel.retweeted
             favoriteButton.isSelected = viewModel.favorited
         }
     }
     
-    fileprivate func configMediaImage() -> SignalProducer<UIImage?, NoError> {
-        return SignalProducer { (observer, disposable) in
-            self.mediaImageView.image = nil
-            guard let viewModel = self.viewModel else { return }
-            if viewModel.mediaProfilePic != nil {
-                for medium in viewModel.media {
-                    guard let urltext = medium["url"] as? String else { return }
-                    self.tweetContentsLabel.text = self.tweetContentsLabel.text?.replacingOccurrences(of: urltext, with: "")
-                }
-                
-                self.mediaImageView.isHidden = false
-                self.verticalSpacingMediaImage.constant = 8
-                if self.heightMediaImage != nil {
-                    self.heightMediaImage.isActive = false
-                }
-                
-                viewModel.getMediaImageView().observe(on: UIScheduler()).startWithValues {
-                    observer.send(value: $0)
-                    observer.sendCompleted()
-                    self.delegate?.reloadTableCellAtIndex(cell: self, indexPath: self.indexPath)
+    fileprivate func getMediaImage() {
+        guard let viewModel = viewModel else { return }
+        for medium in viewModel.media {
+            guard let urltext = medium["url"] as? String else { return }
+            self.tweetContentsLabel.text = self.tweetContentsLabel.text?.replacingOccurrences(of: urltext, with: "")
+            
+            if (medium["type"] as? String) == "photo" {
+                if let mediaurl = medium["media_url"] as? String {
+                    
+                    self.mediaImageView.isHidden = false
+                    self.verticalSpacingMediaImage.constant = 8
+                    if self.heightMediaImage != nil {
+                        self.heightMediaImage.isActive = false
+                    }
+                    
+                    guard let url = URL(string: mediaurl) else { return }
+                    
+                    mediaImageView.kf.setImage(with: url, options: [.backgroundDecode], completionHandler: { (_, _, _, _) in
+                        self.delegate?.reloadTableCellAtIndex(cell: self)
+                    })
                 }
             }
         }
@@ -126,6 +126,7 @@ internal final class TweetCell: UITableViewCell {
     }
     
     @IBAction func replyButtonAction(_ sender: UIButton) {
+        guard let viewModel = viewModel else { return }
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         guard let vc = storyboard.instantiateViewController(withIdentifier: "ComposeViewController") as? ComposeViewController else { return }
         vc.replyToTweet = viewModel

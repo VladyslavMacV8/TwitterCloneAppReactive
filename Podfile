@@ -8,11 +8,12 @@ target 'TwitterCloneAppReactive' do
   # Pods for TwitterCloneAppReactive
 
 	pod 'ReactiveCocoa'
-	pod 'Himotoki'
+	pod 'ObjectMapper'
 	pod 'SwiftSpinner'  
  	pod 'Moya/ReactiveSwift'
 	pod 'RealmSwift'
 	pod 'OAuthSwift'
+	pod 'Kingfisher'
 
   target 'TwitterCloneAppReactiveTests' do
     inherit! :search_paths

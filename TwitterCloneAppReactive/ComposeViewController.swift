@@ -52,7 +52,10 @@ public final class ComposeViewController: UIViewController, UITextViewDelegate {
     fileprivate func setupConfiguration() {
         user = ProfileViewModel(user: realmManager.getCurrentUser())
         
-        photoImageView.reactive.image <~ requestImage(user.profileUrl.value)
+        if let url = URL(string: user.profileUrl.value) {
+            photoImageView.kf.setImage(with: url, options: [.backgroundDecode])
+        }
+        
         nameLabel.reactive.text <~ user.name
         screenNameLabel.reactive.text <~ user.screenName
         

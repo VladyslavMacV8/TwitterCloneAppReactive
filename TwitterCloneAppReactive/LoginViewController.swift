@@ -34,9 +34,9 @@ public final class LoginViewController: UIViewController {
             case .completed:
                 self.performSegue(withIdentifier: "toHome", sender: self)
             case .failed(let error):
-                alertControllerWith(error.localizedDescription)
+                self.alertControllerWith(error.localizedDescription)
             case .interrupted:
-                alertControllerWith("Other Error")
+                self.alertControllerWith("Other Error")
             default: break
             }
         }
