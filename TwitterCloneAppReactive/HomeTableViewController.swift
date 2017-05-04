@@ -10,8 +10,6 @@ import UIKit
 
 public final class HomeTableViewController: UITableViewController, TwitterTableViewDelegate {
     
-    fileprivate var reloadedIndexPaths = [Int]()
-    
     public var homeViewModel: HomeTableViewModeling = HomeTableViewModel()
     fileprivate let realmManager: RealmProtocol = RealmManager()
 

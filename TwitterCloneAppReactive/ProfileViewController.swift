@@ -29,7 +29,6 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     fileprivate let userViewModel: ProfileViewModeling = ProfileViewModel()
     fileprivate var userModeling: ProfileViewModeling?
     
-    fileprivate var reloadedIndexPaths = [Int]()
     fileprivate var refreshControl: UIRefreshControl!
     
     public var userScreenName: String!
@@ -122,8 +121,7 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "HomeCell", for: indexPath) as! TweetCell
         cell.delegate = self
-//        cell.indexPath = indexPath
-        
+
         cell.viewModel = userViewModel.cellModels.value[indexPath.row]
         
         return cell
