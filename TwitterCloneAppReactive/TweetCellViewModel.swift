@@ -6,7 +6,6 @@
 //  Copyright © 2017 Vladyslav Kudelia. All rights reserved.
 //
 
-import ReactiveCocoa
 import ReactiveSwift
 import Result
 
@@ -30,8 +29,6 @@ public protocol TweetCellViewModeling {
 
 public final class TweetCellViewModel: TweetCellViewModeling {
     
-    fileprivate var authorImage: UIImage?
-    fileprivate var mediaImage: UIImage?
     fileprivate var authorProfilePic: String
     fileprivate var rCount: Int = 0
     fileprivate var fCount: Int = 0
@@ -41,19 +38,20 @@ public final class TweetCellViewModel: TweetCellViewModeling {
     public let authorScreenName: String
     public let tweetContents: String
     public let tweetAge: String
-    
-    public var retweetCount: Int {
-        get { return rCount }
-        set { rCount = newValue } }
-    
-    public var favoriteCount: Int {
-        get { return fCount }
-        set { fCount = newValue } }
-    
     public let urls: [[String: AnyObject]]
     public let media: [[String: AnyObject]]
     public let favorited: Bool
     public let retweeted: Bool
+    
+    public var retweetCount: Int {
+        get { return rCount }
+        set { rCount = newValue }
+    }
+    
+    public var favoriteCount: Int {
+        get { return fCount }
+        set { fCount = newValue }
+    }
     
     internal init(tweet: TweetModel) {
         tweetID = tweet.tweetID
@@ -97,7 +95,7 @@ public final class TweetCellViewModel: TweetCellViewModeling {
             displayUrls.append(displayurl)
         }
         
-        if(displayUrls.count > 0){
+        if displayUrls.count > 0 {
             let content = label.text ?? ""
             
             let urlText = " " + displayUrls.joined(separator: " ")

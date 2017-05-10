@@ -7,10 +7,7 @@
 //
 
 import UIKit
-import ReactiveCocoa
 import ReactiveSwift
-import Result
-import Kingfisher
 
 internal final class TweetCell: UITableViewCell {
     
@@ -60,7 +57,6 @@ internal final class TweetCell: UITableViewCell {
                 self.profilePictureImageView.kf.setImage(with: url, options: [.backgroundDecode])
             }
             
-            mediaImageView.image = nil
             getMediaImage()
             
             retweetButton.isSelected = viewModel.retweeted
@@ -69,6 +65,7 @@ internal final class TweetCell: UITableViewCell {
     }
     
     fileprivate func getMediaImage() {
+        mediaImageView.image = nil
         guard let viewModel = viewModel else { return }
         for medium in viewModel.media {
             guard let urltext = medium["url"] as? String else { return }
@@ -86,7 +83,7 @@ internal final class TweetCell: UITableViewCell {
                     guard let url = URL(string: mediaurl) else { return }
                     
                     mediaImageView.kf.setImage(with: url, options: [.backgroundDecode], completionHandler: { (_, _, _, _) in
-                        self.delegate?.reloadTableCellAtIndex(cell: self)
+                        self.delegate?.reloadTableCellAtIndex(self)
                     })
                 }
             }

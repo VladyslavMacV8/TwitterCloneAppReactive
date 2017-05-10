@@ -9,7 +9,6 @@
 import UIKit
 import ReactiveSwift
 import SwiftSpinner
-import Kingfisher
 
 public final class ProfileViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, TwitterTableViewDelegate {
 
@@ -27,9 +26,9 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     fileprivate let realmManager: RealmProtocol = RealmManager()
     fileprivate let homeViewModel: HomeTableViewModeling = HomeTableViewModel()
     fileprivate let userViewModel: ProfileViewModeling = ProfileViewModel()
-    fileprivate var userModeling: ProfileViewModeling?
     
-    fileprivate var refreshControl: UIRefreshControl!
+    fileprivate var userModeling: ProfileViewModeling?
+    fileprivate var refreshControl = UIRefreshControl()
     
     public var userScreenName: String!
     
@@ -46,20 +45,20 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
         super.viewWillAppear(animated)
         if self.userScreenName == nil {
             userModeling = ProfileViewModel(user: realmManager.getCurrentUser())
-            setupViewController()
+            setupConfig()
         } else {
             SwiftSpinner.show("Initialization...")
             twitterManager.userByScreenName(screenName: userScreenName).observe(on: UIScheduler()).on(value: { (user) in
                 self.userModeling = ProfileViewModel(user: user)
             }).startWithCompleted {
                 SwiftSpinner.hide({ 
-                    self.setupViewController()
+                    self.setupConfig()
                 })
             }
         }
     }
     
-    fileprivate func setupViewController() {
+    fileprivate func setupConfig() {
         guard let user = userModeling else { return }
         
         if let backgorundImageUrl = URL(string: user.backgroundImageURL.value) {
@@ -72,7 +71,6 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
         
         nameLabel.reactive.text <~ user.name
         screenNameLabel.reactive.text <~ user.screenName
-        
         followersCountLabel.reactive.text <~ user.followersCount
         followingCountLabel.reactive.text <~ user.followingCount
 
@@ -102,9 +100,8 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     }
     
     fileprivate func setupRefreshControl() {
-        refreshControl = UIRefreshControl()
-        refreshControl?.addTarget(self, action: #selector(reloadData), for: .valueChanged)
-        userTableView.insertSubview(refreshControl!, at: 0)
+        refreshControl.addTarget(self, action: #selector(reloadData), for: .valueChanged)
+        userTableView.insertSubview(refreshControl, at: 0)
     }
     
     @objc fileprivate func reloadData() {
@@ -121,7 +118,6 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "HomeCell", for: indexPath) as! TweetCell
         cell.delegate = self
-
         cell.viewModel = userViewModel.cellModels.value[indexPath.row]
         
         return cell
@@ -143,7 +139,7 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
         }
     }
     
-    func reloadTableCellAtIndex(cell: UITableViewCell) {
+    func reloadTableCellAtIndex(_ cell: UITableViewCell) {
         guard let newIndex = userTableView.indexPath(for: cell) else { return }
         DispatchQueue.main.async { self.userTableView.reloadRows(at: [newIndex], with: .none) }
     }
@@ -157,10 +153,11 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
         let cancelActionButton = UIAlertAction(title: "Cancel", style: .cancel)
         actionSheetController.addAction(cancelActionButton)
         let logOutActionButton = UIAlertAction(title: "Log Out", style: .destructive) { (action) in
-            self.twitterManager.logout()
-            let storyboard = UIStoryboard(name: "Main", bundle: Bundle.main)
-            if let vc = storyboard.instantiateViewController(withIdentifier: "LogInViewController") as? LoginViewController {
-                self.present(vc, animated: true, completion: nil)
+            self.twitterManager.logout().observe(on: UIScheduler()).startWithCompleted {
+                let storyboard = UIStoryboard(name: "Main", bundle: Bundle.main)
+                if let vc = storyboard.instantiateViewController(withIdentifier: "LogInViewController") as? LoginViewController {
+                    self.present(vc, animated: true, completion: nil)
+                }
             }
         }
         actionSheetController.addAction(logOutActionButton)

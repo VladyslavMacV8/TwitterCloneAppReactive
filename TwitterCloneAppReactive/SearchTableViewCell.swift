@@ -8,9 +8,8 @@
 
 import UIKit
 import ReactiveSwift
-import Kingfisher
 
-internal class SearchTableViewCell: UITableViewCell {
+internal final class SearchTableViewCell: UITableViewCell {
 
     @IBOutlet weak var photoImageView: UIImageView!
     @IBOutlet weak var nameLabel: UILabel!

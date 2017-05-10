@@ -7,10 +7,11 @@
 //
 
 import UIKit
+import ReactiveSwift
 
 public final class HomeTableViewController: UITableViewController, TwitterTableViewDelegate {
     
-    public var homeViewModel: HomeTableViewModeling = HomeTableViewModel()
+    fileprivate let homeViewModel: HomeTableViewModeling = HomeTableViewModel()
     fileprivate let realmManager: RealmProtocol = RealmManager()
 
     override public func viewDidLoad() {
@@ -41,7 +42,7 @@ public final class HomeTableViewController: UITableViewController, TwitterTableV
     }
     
     @objc fileprivate func reloadData() {
-        homeViewModel.startUpdate()
+        homeViewModel.startUpdate().observe(on: UIScheduler()).start()
         homeViewModel.cellModels.producer.on { _ in self.tableView.reloadData() }.start()
         refreshControl?.endRefreshing()
     }
@@ -53,7 +54,6 @@ public final class HomeTableViewController: UITableViewController, TwitterTableV
     override public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "HomeCell", for: indexPath) as! TweetCell
         cell.delegate = self
-        
         cell.viewModel = homeViewModel.cellModels.value[indexPath.row]
         
         return cell
@@ -66,7 +66,7 @@ public final class HomeTableViewController: UITableViewController, TwitterTableV
         }
     }
     
-    func reloadTableCellAtIndex(cell: UITableViewCell) {
+    func reloadTableCellAtIndex(_ cell: UITableViewCell) {
         guard let newIndex = tableView.indexPath(for: cell) else { return }
         DispatchQueue.main.async { self.tableView.reloadRows(at: [newIndex], with: .none) }
     }
@@ -84,3 +84,4 @@ public final class HomeTableViewController: UITableViewController, TwitterTableV
         present(viewController, animated: true, completion: nil)
     }
 }
+
