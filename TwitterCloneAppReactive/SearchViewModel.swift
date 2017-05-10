@@ -16,7 +16,7 @@ public protocol SearchViewModeling {
     func updateUsersList(label: UITextField) -> SignalProducer<(), NoError>
 }
 
-public class SearchViewModel: SearchViewModeling {
+public final class SearchViewModel: SearchViewModeling {
     
     fileprivate let _cellModels = MutableProperty<[ProfileViewModeling]>([])
     fileprivate let twitterManager: TwitterProtocol = TwitterAPIManager()

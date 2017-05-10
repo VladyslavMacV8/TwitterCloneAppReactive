@@ -9,6 +9,7 @@
 import UIKit
 import OAuthSwift
 import RealmSwift
+import Kingfisher
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -16,9 +17,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
-
         Realm.Configuration.defaultConfiguration.deleteRealmIfMigrationNeeded = true
-        
         return true
     }
 
@@ -46,7 +45,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 extension AppDelegate {
-    
     func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -> Bool {
         OAuthSwift.handle(url: url)
         return true

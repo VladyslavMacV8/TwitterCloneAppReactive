@@ -7,7 +7,6 @@
 //
 
 import OAuthSwift
-import RealmSwift
 import ReactiveCocoa
 import ReactiveSwift
 import Result
@@ -21,7 +20,7 @@ public protocol TwitterProtocol {
     func homeTimeline() -> SignalProducer<[TweetModel], NoError>
     func userTimeline(id: Int) -> SignalProducer<[TweetModel], NoError>
     func userByScreenName(screenName: String) -> SignalProducer<UserModel, NoError>
-    func retweet(params: [String: AnyObject]?, retweet: Bool) -> SignalProducer<TweetModel, NoError>
+    func retweet(params: [String: AnyObject], retweet: Bool) -> SignalProducer<TweetModel, NoError>
     func favorite(params: [String: AnyObject], favorite: Bool) -> SignalProducer<TweetModel, NoError>
     func publishTweet(params: [String: AnyObject]) -> SignalProducer<TweetModel, NoError>
     func replyToTweet(text: String, replyToTweetID: Int?) -> SignalProducer<TweetModel, NoError>
@@ -35,11 +34,11 @@ public class TwitterAPIManager: TwitterProtocol {
     
     fileprivate static var tokens: (String, String)!
     
-    fileprivate let oauth1swift = OAuth1Swift(consumerKey:     ConstantString.key,
-                                  consumerSecret:  ConstantString.secret,
-                                  requestTokenUrl: ConstantString.requestTokenUrl,
-                                  authorizeUrl:    ConstantString.authorizeUrl,
-                                  accessTokenUrl:  ConstantString.accessTokenUrl)
+    fileprivate let oauth1swift = OAuth1Swift(consumerKey:     ConstantBaseString.key,
+                                              consumerSecret:  ConstantBaseString.secret,
+                                              requestTokenUrl: ConstantStrings.requestTokenUrl,
+                                              authorizeUrl:    ConstantStrings.authorizeUrl,
+                                              accessTokenUrl:  ConstantStrings.accessTokenUrl)
     
     fileprivate let realmManager: RealmProtocol = RealmManager()
     fileprivate let defaults = UserDefaults.standard
@@ -57,11 +56,11 @@ public class TwitterAPIManager: TwitterProtocol {
             self.oauth1swift.authorizeURLHandler = self.getURLHandler()
             self.oauth1swift.authorize(withCallbackURL: URL(string: "oauth-twitter://oauth-callback")!, success: { credential, response, parameters in
                 TwitterAPIManager.tokens = (credential.oauthToken, credential.oauthTokenSecret)
-                self.currentAccount().startWithValues({ (user) in
+                self.currentAccount().startWithValues { (user) in
                     self.defaults.set(user.id, forKey: "id")
                     self.defaults.synchronize()
                     self.realmManager.setCurrentUser(user)
-                })
+                }
                 observer.sendCompleted()
             }, failure: { error in
                 print(error.description)
@@ -75,15 +74,15 @@ public class TwitterAPIManager: TwitterProtocol {
     }
     
     fileprivate func getTokens() {
-        guard let token = TwitterAPIManager.tokens?.0, let secretToken = TwitterAPIManager.tokens?.1 else { return }
-        self.oauth1swift.client.credential.oauthToken = token
-        self.oauth1swift.client.credential.oauthTokenSecret = secretToken
+        oauth1swift.client.credential.oauthToken = TwitterAPIManager.tokens.0
+        oauth1swift.client.credential.oauthTokenSecret = TwitterAPIManager.tokens.1
     }
     
     public func currentAccount() -> SignalProducer<UserModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get(ConstantString.currentAccount, parameters: [:], success: { response in
+            let _ = self.oauth1swift.client.get(ConstantStrings.currentAccount,
+                                                parameters: [:], success: { response in
                 do {
                     let jsonDictinary = try response.jsonObject() as Any?
                     guard let user = Mapper<UserModel>().map(JSONObject: jsonDictinary) else { return }
@@ -91,7 +90,7 @@ public class TwitterAPIManager: TwitterProtocol {
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
             }, failure: { error in
-                print(error.localizedDescription)
+                print("CA " + error.localizedDescription)
                 observer.sendInterrupted()
             })
         }
@@ -100,7 +99,7 @@ public class TwitterAPIManager: TwitterProtocol {
     public func homeTimeline() -> SignalProducer<[TweetModel], NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get(ConstantString.homeTimeline,
+            let _ = self.oauth1swift.client.get(ConstantStrings.homeTimeline,
                                                 parameters: ["count": 30], success: { response in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
@@ -118,7 +117,7 @@ public class TwitterAPIManager: TwitterProtocol {
     public func userTimeline(id: Int) -> SignalProducer<[TweetModel], NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get(ConstantString.userTimeline,
+            let _ = self.oauth1swift.client.get(ConstantStrings.userTimeline,
                                                 parameters: ["count": 30, "user_id": id], success: { response in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
@@ -136,12 +135,12 @@ public class TwitterAPIManager: TwitterProtocol {
     public func userByScreenName(screenName: String) -> SignalProducer<UserModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get(ConstantString.userByScreenName,
+            let _ = self.oauth1swift.client.get(ConstantStrings.userByScreenName,
                                                 parameters: ["screen_name": screenName], success: { response in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
-                    guard let user = Mapper<UserModel>().mapArray(JSONArray: jsonDictinary) else { return }
-                    observer.send(value: user[0])
+                    guard let users = Mapper<UserModel>().mapArray(JSONArray: jsonDictinary) else { return }
+                    observer.send(value: users[0])
                     observer.sendCompleted()
                 } catch { observer.sendInterrupted() }
             }, failure: { error in
@@ -151,12 +150,13 @@ public class TwitterAPIManager: TwitterProtocol {
         }
     }
     
-    public func retweet(params: [String : AnyObject]?, retweet: Bool) -> SignalProducer<TweetModel, NoError> {
+    public func retweet(params: [String :AnyObject], retweet: Bool) -> SignalProducer<TweetModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let tweetID = params!["id"] as! String
+            let tweetID = params["id"] as! String
+            print(ConstantStrings.retweet + retweet.description + "/" + tweetID + ".json")
             let endpoint = retweet ? "retweet" : "unretweet"
-            let _ = self.oauth1swift.client.post(ConstantString.retweet + endpoint + "/" + tweetID + ".json",
+            let _ = self.oauth1swift.client.post(ConstantStrings.retweet + endpoint + "/" + tweetID + ".json",
                                                  parameters: ["id": tweetID], success: { (response) in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
@@ -171,11 +171,11 @@ public class TwitterAPIManager: TwitterProtocol {
         }
     }
     
-    public func favorite(params: [String : AnyObject], favorite: Bool) -> SignalProducer<TweetModel, NoError> {
+    public func favorite(params: [String :AnyObject], favorite: Bool) -> SignalProducer<TweetModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
             let endpoint = favorite ? "create" : "destroy"
-            let _ = self.oauth1swift.client.post(ConstantString.favorite + endpoint + ".json",
+            let _ = self.oauth1swift.client.post(ConstantStrings.favorite + endpoint + ".json",
                                                  parameters: params, success: { (response) in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
@@ -193,7 +193,7 @@ public class TwitterAPIManager: TwitterProtocol {
     public func publishTweet(params: [String : AnyObject]) -> SignalProducer<TweetModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.post(ConstantString.publishTweet,
+            let _ = self.oauth1swift.client.post(ConstantStrings.publishTweet,
                                                  parameters: params, success: { (response) in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
@@ -215,9 +215,8 @@ public class TwitterAPIManager: TwitterProtocol {
                 observer.sendInterrupted()
                 return
             }
-            let _ = self.oauth1swift.client.post(ConstantString.publishTweet,
-                                                 parameters: ["status": text, "in_reply_to_status_id":
-                                                    replyToTweetID!], success: { (response) in
+            let _ = self.oauth1swift.client.post(ConstantStrings.publishTweet,
+                                                 parameters: ["status": text, "in_reply_to_status_id": replyToTweetID!], success: { (response) in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
                     guard let tweet = Mapper<TweetModel>().map(JSON: jsonDictinary) else { return }
@@ -234,7 +233,7 @@ public class TwitterAPIManager: TwitterProtocol {
     public func deleteTweet(tweetId: String) -> SignalProducer<TweetModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.post(ConstantString.deleteTweet + tweetId + ".json",
+            let _ = self.oauth1swift.client.post(ConstantStrings.deleteTweet + tweetId + ".json",
                                                  parameters: [:], success: { (response) in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [String: Any] else { return }
@@ -252,7 +251,7 @@ public class TwitterAPIManager: TwitterProtocol {
     public func searchNewUser(query: String) -> SignalProducer<[UserModel], NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.get(ConstantString.searchNewUser,
+            let _ = self.oauth1swift.client.get(ConstantStrings.searchNewUser,
                                                 parameters: ["q": query], success: { response in
                 do {
                     guard let jsonDictinary = try response.jsonObject() as? [[String: Any]] else { return }
@@ -270,7 +269,7 @@ public class TwitterAPIManager: TwitterProtocol {
     public func followNewUser(screenName: String) -> SignalProducer<UserModel, NoError> {
         getTokens()
         return SignalProducer { (observer, disposable) in
-            let _ = self.oauth1swift.client.post(ConstantString.followNewUser,
+            let _ = self.oauth1swift.client.post(ConstantStrings.followNewUser,
                                                  parameters: ["screen_name": screenName, "follow": true], success: { (response) in
                     do {
                         let jsonDictinary = try response.jsonObject() as Any?

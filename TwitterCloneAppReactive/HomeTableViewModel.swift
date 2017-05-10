@@ -6,14 +6,13 @@
 //  Copyright © 2017 Vladyslav Kudelia. All rights reserved.
 //
 
-import ReactiveCocoa
 import ReactiveSwift
 import Result
 
 public protocol HomeTableViewModeling {
     var cellModels: Property<[TweetCellViewModeling]> { get }
     
-    func startUpdate()
+    func startUpdate() -> SignalProducer<(), NoError>
 }
 
 public final class HomeTableViewModel: HomeTableViewModeling {
@@ -24,13 +23,16 @@ public final class HomeTableViewModel: HomeTableViewModeling {
     
     public init() {}
     
-    public func startUpdate() {
-        twitter.homeTimeline().observe(on: UIScheduler()).on { (tweets) in
-            var tweetsModel = [TweetCellViewModeling]([])
-            for tweet in tweets {
-                tweetsModel.append(TweetCellViewModel(tweet: tweet))
-            }
-            self._cellModels.value = tweetsModel
-        }.start()
+    public func startUpdate() -> SignalProducer<(), NoError> {
+        return SignalProducer { (observer, disposable) in
+            self.twitter.homeTimeline().observe(on: UIScheduler()).on { (tweets) in
+                var tweetsModel = [TweetCellViewModeling]([])
+                for tweet in tweets {
+                    tweetsModel.append(TweetCellViewModel(tweet: tweet))
+                }
+                self._cellModels.value = tweetsModel
+            }.start()
+            observer.sendCompleted()
+        }
     }
 }

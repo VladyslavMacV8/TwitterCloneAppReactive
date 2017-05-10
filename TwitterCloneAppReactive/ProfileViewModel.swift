@@ -6,7 +6,6 @@
 //  Copyright © 2017 Vladyslav Kudelia. All rights reserved.
 //
 
-import ReactiveCocoa
 import ReactiveSwift
 import Result
 
@@ -46,6 +45,7 @@ public final class ProfileViewModel: ProfileViewModeling {
     public var backgroundImageURL: Property<String> { return Property(_backgroundImageURL) }
     public var followersCount: Property<String> { return Property(_followersCount) }
     public var followingCount: Property<String> { return Property(_followingCount) }
+    
     public var isFollow: MutableProperty<Bool?> {
         get { return _isFollow }
         set { _isFollow = newValue }

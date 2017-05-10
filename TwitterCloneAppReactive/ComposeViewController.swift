@@ -7,8 +7,6 @@
 //
 
 import UIKit
-import RealmSwift
-import ReactiveCocoa
 import ReactiveSwift
 
 public final class ComposeViewController: UIViewController, UITextViewDelegate {
@@ -22,10 +20,12 @@ public final class ComposeViewController: UIViewController, UITextViewDelegate {
     @IBOutlet weak var closeButton: UIButton!
     @IBOutlet weak var sendButton: UIButton!
     
-    public var replyToTweet: TweetCellViewModeling!
-    fileprivate var user: ProfileViewModeling!
     fileprivate let realmManager: RealmProtocol = RealmManager()
     fileprivate let twitterManager: TwitterProtocol = TwitterAPIManager()
+    
+    fileprivate var user: ProfileViewModeling!
+    
+    public var replyToTweet: TweetCellViewModeling!
     
     override public func viewDidLoad() {
         super.viewDidLoad()
@@ -42,10 +42,9 @@ public final class ComposeViewController: UIViewController, UITextViewDelegate {
         tweetTextView.layer.cornerRadius = 5
         tweetTextView.clipsToBounds = true
         
-        countCharacterLabel.text = "140"
+        countCharacterLabel.text = "50"
         
         sendButton.layer.cornerRadius = 5
-        
         closeButton.layer.cornerRadius = 5
     }
     
@@ -95,12 +94,12 @@ public final class ComposeViewController: UIViewController, UITextViewDelegate {
         let count = textView.text.characters.count
         let total = 140 - count
         if total >= 0 {
-           countCharacterLabel.text = String(total)
+           countCharacterLabel.text = total.description
         }
         
-        if total <= 0 || total == 140 {
+        if total < 0 || total == 50 {
             sendButton.isHidden = true
-            countCharacterLabel.textColor = UIColor.red
+            countCharacterLabel.textColor = .red
         } else {
             sendButton.isHidden = false
             countCharacterLabel.textColor = #colorLiteral(red: 0.231372549, green: 0.6, blue: 0.9882352941, alpha: 1)
@@ -118,14 +117,14 @@ public final class ComposeViewController: UIViewController, UITextViewDelegate {
             var apiParams: [String: AnyObject] = [:]
             apiParams["status"] = composedText as AnyObject
             
-            twitterManager.publishTweet(params: apiParams).startWithCompleted {
+            twitterManager.publishTweet(params: apiParams).observe(on: UIScheduler()).startWithCompleted {
                 self.presentViewController()
             }
             
         } else {
             composedText = replyToTweet.authorScreenName + ":" + composedText
             
-            twitterManager.replyToTweet(text: composedText, replyToTweetID: replyToTweet.tweetID).startWithCompleted {
+            twitterManager.replyToTweet(text: composedText, replyToTweetID: replyToTweet.tweetID).observe(on: UIScheduler()).startWithCompleted {
                 self.presentViewController()
             }
         }
