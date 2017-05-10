@@ -29,8 +29,6 @@ public protocol TweetCellViewModeling {
 
 public final class TweetCellViewModel: TweetCellViewModeling {
     
-    fileprivate var authorImage: UIImage?
-    fileprivate var mediaImage: UIImage?
     fileprivate var authorProfilePic: String
     fileprivate var rCount: Int = 0
     fileprivate var fCount: Int = 0

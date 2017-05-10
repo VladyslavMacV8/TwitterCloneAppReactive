@@ -30,6 +30,7 @@ public class RealmManager: RealmProtocol {
     public func getCurrentUser() -> UserModel {
         let id = userDefaults.integer(forKey: "id")
         var user: UserModel!
+        
         do {
             let realm = try Realm()
             user = realm.object(ofType: UserModel.self, forPrimaryKey: id)

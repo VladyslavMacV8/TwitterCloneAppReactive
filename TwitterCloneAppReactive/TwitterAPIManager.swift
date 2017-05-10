@@ -27,7 +27,7 @@ public protocol TwitterProtocol {
     func deleteTweet(tweetId: String) -> SignalProducer<TweetModel, NoError>
     func searchNewUser(query: String) -> SignalProducer<[UserModel], NoError>
     func followNewUser(screenName: String) -> SignalProducer<UserModel, NoError>
-    func logout()
+    func logout() -> SignalProducer<(), NoError>
 }
 
 public class TwitterAPIManager: TwitterProtocol {
@@ -154,7 +154,6 @@ public class TwitterAPIManager: TwitterProtocol {
         getTokens()
         return SignalProducer { (observer, disposable) in
             let tweetID = params["id"] as! String
-            print(ConstantStrings.retweet + retweet.description + "/" + tweetID + ".json")
             let endpoint = retweet ? "retweet" : "unretweet"
             let _ = self.oauth1swift.client.post(ConstantStrings.retweet + endpoint + "/" + tweetID + ".json",
                                                  parameters: ["id": tweetID], success: { (response) in
@@ -284,15 +283,21 @@ public class TwitterAPIManager: TwitterProtocol {
         }
     }
 
-    public func logout() {
-        let storage = HTTPCookieStorage.shared
-        guard let cookies = storage.cookies else { return }
-        for cookie in cookies {
-            storage.deleteCookie(cookie)
-        }
-        realmManager.deleteCurrentUser()
-        if let appDomain = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: appDomain)
+    public func logout() -> SignalProducer<(), NoError> {
+        return SignalProducer { (observer, disposable) in
+            let storage = HTTPCookieStorage.shared
+            guard let cookies = storage.cookies else {
+                observer.sendInterrupted()
+                return
+            }
+            for cookie in cookies {
+                storage.deleteCookie(cookie)
+            }
+            self.realmManager.deleteCurrentUser()
+            if let appDomain = Bundle.main.bundleIdentifier {
+                self.defaults.removePersistentDomain(forName: appDomain)
+            }
+            observer.sendCompleted()
         }
     }
 }

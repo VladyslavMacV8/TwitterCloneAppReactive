@@ -153,10 +153,11 @@ public final class ProfileViewController: UIViewController, UITableViewDelegate,
         let cancelActionButton = UIAlertAction(title: "Cancel", style: .cancel)
         actionSheetController.addAction(cancelActionButton)
         let logOutActionButton = UIAlertAction(title: "Log Out", style: .destructive) { (action) in
-            self.twitterManager.logout()
-            let storyboard = UIStoryboard(name: "Main", bundle: Bundle.main)
-            if let vc = storyboard.instantiateViewController(withIdentifier: "LogInViewController") as? LoginViewController {
-                self.present(vc, animated: true, completion: nil)
+            self.twitterManager.logout().observe(on: UIScheduler()).startWithCompleted {
+                let storyboard = UIStoryboard(name: "Main", bundle: Bundle.main)
+                if let vc = storyboard.instantiateViewController(withIdentifier: "LogInViewController") as? LoginViewController {
+                    self.present(vc, animated: true, completion: nil)
+                }
             }
         }
         actionSheetController.addAction(logOutActionButton)
